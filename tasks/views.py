@@ -6,6 +6,7 @@ from django.db import IntegrityError
 from django.utils import timezone
 from .forms import TaskForm
 from .models import Task
+from django.contrib.auth.decorators import login_required
 
 # Home
 def home(request):
@@ -37,12 +38,28 @@ def signup(request):
             'form': UserCreationForm,
             'error': 'Passwords do not match'
         })
-    
-def tasks(request):
-    tasks = Task.objects.filter(user=request.user, datecompleted__isnull=True) # Muestra según el usuario y según si está completada, por la fecha
 
+# Tasks pending
+
+@login_required
+def tasks(request):
+    # Muestra según el usuario y según si está completada, por la fecha
+    tasks = Task.objects.filter(user=request.user, datecompleted__isnull=True) 
+    
     return render(request, 'tasks/tasks.html', {'tasks': tasks})
 
+# Tasks completed
+
+@login_required
+def tasks_completed(request):
+    # Muestra según el usuario y según si está completada, por la fecha
+    tasks = Task.objects.filter(user=request.user, datecompleted__isnull=False).order_by('-datecompleted') 
+    
+    return render(request, 'tasks/tasks.html', {'tasks': tasks})
+
+# Create task
+
+@login_required
 def create_task(request):
     
     if request.method == 'GET':
@@ -62,6 +79,9 @@ def create_task(request):
                 'error': 'Please privide vailda data'
             })
 
+# Details of a task
+
+@login_required
 def task_detail(request, task_id):
     if request.method == 'GET':
         task = get_object_or_404(Task, pk=task_id, user=request.user)
@@ -77,6 +97,9 @@ def task_detail(request, task_id):
             return render(request, 'tasks/task_detail.html', {'task': task, 'form': form, 
                 'error': 'Error updating task'})
 
+# Marks task as complete
+
+@login_required
 def complete_task(request, task_id):
     task = get_object_or_404(Task, pk=task_id, user=request.user)
     if request.method == 'POST':
@@ -84,6 +107,19 @@ def complete_task(request, task_id):
         task.save()
         return redirect('tasks')
 
+# Mark task as delete
+
+@login_required
+def delete_task(request, task_id):
+    task = get_object_or_404(Task, pk=task_id, user=request.user)
+    if request.method == 'POST':
+        task.datecompleted = timezone.now()
+        task.delete()
+        return redirect('tasks')
+
+#Log out 
+
+@login_required
 def log_out(request):
     logout(request)
     return redirect('home')
